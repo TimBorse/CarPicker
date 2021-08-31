@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
+import CarDatasetUtils
 import SNConnector
 
 cars = SNConnector.getCars()
@@ -21,6 +22,32 @@ planahead_labels = [6, 12, 18, 24, 36, 48]
 # 0 - 2000 €
 monthly_budget = 1000
 birth_date = "19-08-2021"
+
+def getInputsFromDataset(dataset):
+    df = CarDatasetUtils.cleanDataframe(pd.read_csv(dataset))
+    relationships = []
+    friends = []
+    hiking = []
+    party = []
+    city = []
+    mountainbiking = []
+    family = []
+    skiing = []
+    dogs = []
+    cars = []
+    shared_mobility = []
+    two_wheels = []
+    style = []
+    plan = []
+    budget = []
+    birthday = []
+    yearly_drive = []
+    target = []
+    is_car = df["Marke"]=="BMW"
+    car = df[is_car]
+    print(car["Modell"].unique())
+    for index, obj in df.iterrows():
+        print("")
 
 
 def getRandomInputs():
@@ -270,3 +297,5 @@ def getRandomTrainingData(amount):
     dataframe = createDataframe(inputs, results)
 
     return dataframe
+
+getInputsFromDataset("AI Dataset.csv")
