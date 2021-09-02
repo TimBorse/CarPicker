@@ -34,6 +34,12 @@ def scaleMinMax(min, max, values):
     values = (values - min) / (max - min)
     return values
 
+def convertStringToBoolean(string):
+    if string == 'true':
+        return True
+    return False
+
+
 class AI_Preprocessor():
 
     def __init__(self):
@@ -58,4 +64,6 @@ class AI_Preprocessor():
         for col in columns:
             dataframe[col] = scaleMinMax(min=min_max[col]["min"], max=min_max[col]["max"], values=dataframe[col])
         return dataframe
+
+
 

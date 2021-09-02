@@ -46,8 +46,8 @@ def getInputsFromDataset(dataset):
     is_car = df["Marke"]=="BMW"
     car = df[is_car]
     print(car["Modell"].unique())
-    for index, obj in df.iterrows():
-        print("")
+    #for index, obj in df.iterrows():
+       # print("")
 
 
 def getRandomInputs():

@@ -84,9 +84,10 @@ def predict(model, relationship, friends, hiking, party, city, mountainbiking, s
     predict = model.predict(values)
     print(Preprocessor.labels["target"][np.argmax(predict[0])])
     predictions.append(Preprocessor.labels["target"][np.argmax(predict[0])])
+    return Preprocessor.labels["target"][np.argmax(predict[0])]
 
 
-def generateModel(data=TestDataGenerator.getRandomTrainingData(300), recreate=True):
+def generateModel(data=TestDataGenerator.getRandomTrainingData(3000), recreate=True):
     global columns
     columns = data.columns.values
 
@@ -105,7 +106,7 @@ def generateModel(data=TestDataGenerator.getRandomTrainingData(300), recreate=Tr
                       loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
-        model.fit(x_train, y_train, epochs=20, batch_size=2)
+        model.fit(x_train, y_train, epochs=20)
         model.save("car_model")
 
         pred_train = model.predict(x_train)
@@ -119,9 +120,8 @@ def generateModel(data=TestDataGenerator.getRandomTrainingData(300), recreate=Tr
         model = tf.keras.models.load_model("car_model")
     return model
 
-
+"""
 model = generateModel(recreate=True)
-model.summary()
 
 test = TestDataGenerator.getRandomTrainingData(1)
 for index, obj in test.iterrows():
@@ -131,6 +131,14 @@ for index, obj in test.iterrows():
             party=obj["party"], plan=obj["plan"], shared_mobility=obj["shared_mobility"],
             skiing=obj["skiing"], two_wheels=obj["two_wheels"]
             , yearly_drive=obj["yearly_drive"], style=obj["style"])
-
+"""
 print("Done")
-# ToDo: Single Predictions und Rückführung der Preprocessed Data
+
+class CarPickerAI():
+
+    def __init__(self):
+        self.model = generateModel(recreate=True)
+
+    def predict(self, relationship, friends, hiking, party, city, mountainbiking, skiing, family, dogs, cars,
+            shared_mobility, two_wheels, style, plan, budget, birthday, yearly_drive):
+        return predict(self.model, relationship, friends, hiking, party, city, mountainbiking, skiing, family, dogs, cars, shared_mobility, two_wheels, style, plan, budget, birthday, yearly_drive)
