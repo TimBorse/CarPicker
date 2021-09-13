@@ -1,15 +1,18 @@
-
 import tensorflow as tf
 from keras import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, Dropout
 import pandas as pd
 import numpy as np
 from keras.utils.np_utils import to_categorical
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-
+from kerastuner.tuners import RandomSearch
+from kerastuner.engine.hyperparameters import HyperParameters
+import time
 from AI_Preprocessor import AI_Preprocessor
 import TestDataGenerator
+
+LOG_DIR = f"{int(time.time())}"
 
 categoricalColumns = ['relationship', 'friends', 'hiking', 'party', 'city', 'mountainbiking', 'family', 'skiing',
                       'dogs', 'cars', 'shared_mobility', 'two_wheels', 'target']
@@ -87,7 +90,7 @@ def predict(model, relationship, friends, hiking, party, city, mountainbiking, s
     return Preprocessor.labels["target"][np.argmax(predict[0])]
 
 
-def generateModel(data=TestDataGenerator.getRandomTrainingData(3000), recreate=True):
+def generateModel(data=TestDataGenerator.getRandomTrainingData(500), recreate=True):
     global columns
     columns = data.columns.values
 
@@ -97,16 +100,16 @@ def generateModel(data=TestDataGenerator.getRandomTrainingData(3000), recreate=T
         outputs = y_train.shape[1]
 
         model = Sequential()
-        model.add(Dense(500, activation="relu", input_dim=inputs))
-        model.add(Dense(100, activation="relu"))
-        model.add(Dense(50, activation="relu"))
+        model.add(Dense(240, activation="relu", input_dim=inputs))
+        model.add(Dense(176, activation="relu"))
+        model.add(Dense(240, activation="relu"))
         model.add(Dense(outputs, activation="softmax"))
 
         model.compile(optimizer='adam',
                       loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
-        model.fit(x_train, y_train, epochs=20)
+        model.fit(x_train, y_train, epochs=40, batch_size=4)
         model.save("car_model")
 
         pred_train = model.predict(x_train)
@@ -120,9 +123,48 @@ def generateModel(data=TestDataGenerator.getRandomTrainingData(3000), recreate=T
         model = tf.keras.models.load_model("car_model")
     return model
 
-"""
-model = generateModel(recreate=True)
 
+def findHyperparams(data=TestDataGenerator.getRandomTrainingData(500)):
+    global columns
+    columns = data.columns.values
+
+    x_train, x_test, y_train, y_test = preprocessDataframe(data, split=True)
+    inputs = x_train.shape[1]
+    outputs = y_train.shape[1]
+
+    def buildModel(hp):
+        model = Sequential()
+        model.add(Dense(hp.Int("input_units", 16, 512, 32), activation=hp.Choice('act_input', ['relu', 'sigmoid', 'tanh']), input_dim=inputs))
+        for i in range(hp.Int("n_layers", 1,4)):
+            model.add(Dense(hp.Int(f"dense_{i}_units", 16, 512, 32), activation=hp.Choice('act_'+str(i), ['relu', 'sigmoid', 'tanh'])))
+        model.add(Dense(outputs, activation="softmax"))
+
+        model.compile(optimizer=tf.keras.optimizers.Adam(hp.Choice('learning_rate', values=[1e-2, 1e-3, 1e-4])),
+                      loss='categorical_crossentropy',
+                      metrics=['accuracy'])
+        return model
+
+    tuner = RandomSearch(
+        buildModel,
+        objective="val_accuracy",
+        max_trials= 250,
+        executions_per_trial= 3,
+        directory= '1631528752'
+    )
+
+    #tuner.search(x_train, y_train, epochs=30, validation_data=(x_test, y_test))
+    model = tuner.get_best_models(1)[0]
+    model.fit(x_train, y_train, epochs=30, batch_size=8)
+
+    return model
+    #model = buildModel()
+    #model.fit(x_train, y_train, epochs=50, batch_size=8)
+   # model.save("car_model")
+    #return model
+
+#model = findHyperparams()
+#model = generateModel(recreate=True)
+"""
 test = TestDataGenerator.getRandomTrainingData(1)
 for index, obj in test.iterrows():
     predict(model=model, relationship=obj["relationship"], birthday=obj["birthday"], budget=obj["budget"],
@@ -131,14 +173,16 @@ for index, obj in test.iterrows():
             party=obj["party"], plan=obj["plan"], shared_mobility=obj["shared_mobility"],
             skiing=obj["skiing"], two_wheels=obj["two_wheels"]
             , yearly_drive=obj["yearly_drive"], style=obj["style"])
-"""
 print("Done")
+"""
 
 class CarPickerAI():
 
     def __init__(self):
-        self.model = generateModel(recreate=True)
+        self.model = findHyperparams()
+        #self.model = generateModel(recreate=True)
 
     def predict(self, relationship, friends, hiking, party, city, mountainbiking, skiing, family, dogs, cars,
-            shared_mobility, two_wheels, style, plan, budget, birthday, yearly_drive):
-        return predict(self.model, relationship, friends, hiking, party, city, mountainbiking, skiing, family, dogs, cars, shared_mobility, two_wheels, style, plan, budget, birthday, yearly_drive)
+                shared_mobility, two_wheels, style, plan, budget, birthday, yearly_drive):
+        return predict(self.model, relationship, friends, hiking, party, city, mountainbiking, skiing, family, dogs,
+                       cars, shared_mobility, two_wheels, style, plan, budget, birthday, yearly_drive)
