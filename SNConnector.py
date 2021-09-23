@@ -1,4 +1,6 @@
 # Requests Initials
+import json
+
 import requests
 
 user = 'car.picker'
@@ -13,10 +15,9 @@ def sendPredictionToInstance(table, userID, prediction):
 def getSurvey(userID):
     # Retrieves the Controller SysID from the ServiceNow Instance
     # Set the request parameters
-    url = 'https://nttdatadeutschlandgmbhdemo4.service-now.com/api/now/v1/table/x_ntt47_genericcar_survey_result'
-    params = {"user": userID}
+    url = 'https://nttdatadeutschlandgmbhdemo4.service-now.com/api/now/v1/table/x_ntt47_genericcar_survey_result?sysparm_query=user='+userID
     # GET Request with the defined Parameters
-    response = requests.get(url, auth=(user, pwd), headers=headers, json=params)
+    response = requests.get(url, auth=(user, pwd), headers=headers)
     # Check for HTTP codes other than 200
     if response.status_code != 200:
         print("Success!")
