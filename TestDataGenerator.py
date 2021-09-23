@@ -13,20 +13,29 @@ cars = SNConnector.getCars()
 family_labels = ["single", "couple", "small_family", "big_family"]
 freetime_labels = ["friends", "hiking", "party", "city_trip", "mountainbiking", "family", "skiing", "dogs"]
 mobility_labels = ["car", "two_wheels", "shared_mobility"]
-# Elegant 0 - 100 Fresh
-style = 50
-# 0 - 100 000km
-yearly_drive = 50000
 planahead_labels = [6, 12, 18, 24, 36, 48]
-# 0 - 2000 €
-monthly_budget = 1000
-birth_date = "19-08-2021"
 
-def getCarById(id):
+max_yearly_drive = 50000
+
+
+def getCarById(carId):
     for car in cars:
-        if car['sys_id'] == id:
+        if car['sys_id'] == carId:
             return car
     return None
+
+def getCarsByCategory(category):
+    resultCars = []
+    for car in cars:
+        if category == 'limo' and (car['vehiclecategory']=='limousine' or car['vehiclecategory']=='coupe' or car['vehiclecategory']=='sports'):
+            resultCars.append(car)
+        elif category == 'suv' and (car['vehiclecategory']=='suv' or car['vehiclecategory']=='terrain'):
+            resultCars.append(car)
+        else:
+            if car['vehiclecategory']==category:
+                resultCars.append(car)
+    return resultCars
+
 
 def getRandomBoolean(chance):
     rdm = randint(0, 100)
@@ -34,163 +43,93 @@ def getRandomBoolean(chance):
         return True
     return False
 
-def getRandomString(list):
-    return list[randint(0, len(list)-1)]
+
+def getRandomString(stringList):
+    return stringList[randint(0, len(stringList) - 1)]
+
+def getResultScore(obj):
+    return obj['score']
 
 def getInputsFromDataset(dataset):
-    df = CarDatasetUtils.cleanDataframe(pd.read_csv(dataset))
-    inputs = []
-    results = []
-
     def filterCars(carsList, type_filter=None):
         filteredCars = []
         for car in carsList:
             if car['type'] == type_filter:
                 filteredCars.append(car)
         if len(filteredCars) < 1:
+
             return carsList
         return filteredCars
 
+    def setValuesByCity(isCity, partyChance, category, minDrive, maxDrive, possible_cars):
+        cityValue = isCity
+        partyValue = getRandomBoolean(partyChance)
+        possibleCarsValue = filterCars(possible_cars, category)
+        yearly_driveValue = randint(minDrive, maxDrive)
+        return cityValue, partyValue, possibleCarsValue, yearly_driveValue
+
+    def setValuesByCategory(relationshipsList, familyChance, hikingChance, skiingChance, mountainbikingChance, dogsChance,
+                            friendsChance, carsState, sharedState, twowheelsState, styleLower, styleUpper):
+        relationshipsValue = getRandomString(relationshipsList)
+        familyValue = getRandomBoolean(familyChance)
+        hikingValue = getRandomBoolean(hikingChance)
+        skiingValue = getRandomBoolean(skiingChance)
+        mountainbikingValue = getRandomBoolean(mountainbikingChance)
+        dogsValue = getRandomBoolean(dogsChance)
+        friendsValue = getRandomBoolean(friendsChance)
+        carsValue = carsState
+        shared_mobilityValue = sharedState
+        two_wheelsValue = twowheelsState
+        styleValue = randint(styleLower, styleUpper)
+        return relationshipsValue, familyValue, hikingValue, skiingValue, mountainbikingValue, dogsValue, friendsValue, carsValue, shared_mobilityValue, two_wheelsValue, styleValue
+
+    df = CarDatasetUtils.cleanDataframe(pd.read_csv(dataset))
+    inputs = []
+    results = []
+
     for row in df.iterrows():
-        relationships = 'single'
-        friends = False
-        hiking = False
-        party = False
-        city = False
-        mountainbiking = False
-        family = False
-        skiing = False
-        dogs = False
-        cars = False
-        shared_mobility = False
-        two_wheels = False
-        style = False
-        plan = 48
-        budget = 1000
-        birthday = None
-        yearly_drive = 10000
-        target = ""
         cityPopulation = Cities.getCityPopulation(row[1]['Stadt'], row[1]['PLZ'])
         possibleCars = CarDatasetUtils.modelMap[row[1]['Marke']][row[1]['Modell']]
 
-        def setValuesByCity(isCity, partyChance, category, minDrive, maxDrive, possible_cars):
-            city = isCity
-            party = getRandomBoolean(partyChance)
-            possibleCars = filterCars(possible_cars, category)
-            yearly_drive = randint(minDrive, maxDrive)
-            return city, party, possibleCars, yearly_drive
-
         if cityPopulation > 100000:
-            #city = True
-            #party = getRandomBoolean(50)
             if row[1]['Kilometerstand'] > 50000:
-                city, party, possibleCars, yearly_drive = setValuesByCity(True, 50, 'hybrid', 20000, 50000, possibleCars)
-                #possibleCars = filterCars(possibleCars, 'hybrid')
-               # yearly_drive = randint(20000, 50000)
+                city, party, possibleCars, yearly_drive = setValuesByCity(True, 50, 'hybrid', 20000, 50000,
+                                                                          possibleCars)
             else:
                 city, party, possibleCars, yearly_drive = setValuesByCity(True, 50, 'electric', 5000, 20000,
                                                                           possibleCars)
-                #possibleCars = filterCars(possibleCars, 'electric')
-               # yearly_drive = randint(5000, 20000)
         else:
-            #city = False
-            #party = getRandomBoolean(20)
             if row[1]['Kilometerstand'] > 50000:
                 city, party, possibleCars, yearly_drive = setValuesByCity(False, 20, 'diesel', 20000, 50000,
                                                                           possibleCars)
-                #possibleCars = filterCars(possibleCars, 'diesel')
-                #yearly_drive = randint(20000, 50000)
             else:
                 city, party, possibleCars, yearly_drive = setValuesByCity(False, 20, 'petrol', 5000, 20000,
                                                                           possibleCars)
-                #possibleCars = filterCars(possibleCars, 'petrol')
-                #yearly_drive = randint(5000, 20000)
-        selectedCar = {'car':getCarById(possibleCars[randint(0, len(possibleCars)-1)]['id'])}
+        selectedCar = {'car': getCarById(possibleCars[randint(0, len(possibleCars) - 1)]['id'])}
         results.append(selectedCar)
         if selectedCar['car']['vehiclecategory'] == 'combi':
-            relationships = getRandomString(["small_family", "big_family"])
-            family = getRandomBoolean(70)
-            hiking = getRandomBoolean(50)
-            skiing = getRandomBoolean(50)
-            mountainbiking = getRandomBoolean(50)
-            dogs = getRandomBoolean(50)
-            friends = getRandomBoolean(50)
-            cars = True
-            shared_mobility = False
-            two_wheels = False
-            style = randint(1,4)
+            relationships, family, hiking, skiing, mountainbiking, dogs, friends, cars, shared_mobility, two_wheels, style = setValuesByCategory(
+                ["small_family", "big_family"], 70, 50, 50, 50, 50, 50, True, False, False, 1, 4)
         elif selectedCar['car']['vehiclecategory'] == 'suv':
-            relationships = getRandomString(["small_family", "big_family"])
-            family = getRandomBoolean(70)
-            hiking = getRandomBoolean(80)
-            skiing = getRandomBoolean(60)
-            mountainbiking = getRandomBoolean(65)
-            dogs = getRandomBoolean(50)
-            friends = getRandomBoolean(50)
-            cars = True
-            shared_mobility = False
-            two_wheels = False
-            style = randint(2, 6)
+            relationships, family, hiking, skiing, mountainbiking, dogs, friends, cars, shared_mobility, two_wheels, style = setValuesByCategory(
+                ["small_family", "big_family"], 70, 80, 60, 65, 50, 50, True, False, False, 2, 6)
         elif selectedCar['car']['vehiclecategory'] == 'compact':
-            relationships = getRandomString(["single", "couple", "small_family"])
-            family = getRandomBoolean(10)
-            hiking = getRandomBoolean(10)
-            skiing = getRandomBoolean(10)
-            mountainbiking = getRandomBoolean(10)
-            dogs = getRandomBoolean(40)
-            friends = getRandomBoolean(60)
-            cars = True
-            shared_mobility = False
-            two_wheels = False
-            style = randint(4, 7)
+            relationships, family, hiking, skiing, mountainbiking, dogs, friends, cars, shared_mobility, two_wheels, style = setValuesByCategory(
+                ["single", "couple", "small_family"], 10, 10, 10, 10, 40, 60, True, False, False, 4, 7)
         elif selectedCar['car']['vehiclecategory'] == 'limousine':
-            relationships = getRandomString(["single", "couple", "small_family"])
-            family = getRandomBoolean(10)
-            hiking = getRandomBoolean(10)
-            skiing = getRandomBoolean(10)
-            mountainbiking = getRandomBoolean(10)
-            dogs = getRandomBoolean(10)
-            friends = getRandomBoolean(20)
-            cars = True
-            shared_mobility = False
-            two_wheels = False
-            style = randint(3, 7)
+            relationships, family, hiking, skiing, mountainbiking, dogs, friends, cars, shared_mobility, two_wheels, style = setValuesByCategory(
+                ["single", "couple", "small_family"], 10, 10, 10, 10, 10, 20, True, False, False, 3, 7)
         elif selectedCar['car']['vehiclecategory'] == 'sports':
-            relationships = getRandomString(["single", "couple"])
-            family = getRandomBoolean(5)
-            hiking = getRandomBoolean(5)
-            skiing = getRandomBoolean(5)
-            mountainbiking = getRandomBoolean(5)
-            dogs = getRandomBoolean(5)
-            friends = getRandomBoolean(5)
-            cars = True
-            shared_mobility = False
-            two_wheels = False
-            style = randint(8, 10)
+            relationships, family, hiking, skiing, mountainbiking, dogs, friends, cars, shared_mobility, two_wheels, style = setValuesByCategory(
+                ["single", "couple"], 5, 5, 5, 5, 5, 5, True, False, False, 8, 10)
         elif selectedCar['car']['vehiclecategory'] == 'coupe':
+            relationships, family, hiking, skiing, mountainbiking, dogs, friends, cars, shared_mobility, two_wheels, style = setValuesByCategory(
+                ["single", "couple", "small_family"], 10, 10, 10, 10, 10, 30, True, False, False, 4, 8)
             relationships = getRandomString(["single", "couple", "small_family"])
-            family = getRandomBoolean(10)
-            hiking = getRandomBoolean(10)
-            skiing = getRandomBoolean(10)
-            mountainbiking = getRandomBoolean(10)
-            dogs = getRandomBoolean(10)
-            friends = getRandomBoolean(30)
-            cars = True
-            shared_mobility = False
-            two_wheels = False
-            style = randint(4, 8)
         elif selectedCar['car']['vehiclecategory'] == 'terrain':
-            relationships = getRandomString(["single","couple","small_family", "big_family"])
-            family = getRandomBoolean(40)
-            hiking = getRandomBoolean(80)
-            skiing = getRandomBoolean(60)
-            mountainbiking = getRandomBoolean(70)
-            dogs = getRandomBoolean(35)
-            friends = getRandomBoolean(10)
-            cars = True
-            shared_mobility = False
-            two_wheels = False
-            style = randint(4, 6)
+            relationships, family, hiking, skiing, mountainbiking, dogs, friends, cars, shared_mobility, two_wheels, style = setValuesByCategory(
+                ["single", "couple", "small_family", "big_family"], 40, 80, 60, 70, 35, 10, True, False, False, 4, 6)
+
         plan = planahead_labels[randint(0, len(planahead_labels) - 1)]
         day = randint(1, 28)
         month = randint(1, 12)
@@ -202,13 +141,11 @@ def getInputsFromDataset(dataset):
         input = [relationships, freetimes, mobilities, style, plan, budget, birthday, yearly_drive]
         inputs.append(input)
     return inputs, results
-    #ToDo: Inputs in Richtige Form bringen
 
 
 def getRandomInputs():
-    inputs = []
+    inputs = [family_labels[randint(0, len(family_labels) - 1)]]
     # Family
-    inputs.append(family_labels[randint(0, len(family_labels) - 1)])
 
     # Freetime
     openFreetime = freetime_labels.copy()
@@ -255,15 +192,114 @@ def getRandomInputs():
     month = randint(1, 12)
     year = randint(1940, 2000)
     inputs.append(datetime.datetime(year, month, day))
-    inputs.append(randint(0, yearly_drive))
+    inputs.append(randint(0, max_yearly_drive))
     return inputs
 
-def getBestCategory(relationship, freetime, style, birth, drive):
-    #Todo
-    return "undefined"
+
+def getBestCategory(relationship, freetime, style,  drive):
+
+    combiScore = 0
+    compactScore = 0
+    limoScore = 0
+    suvScore = 0
+    friends = freetime[0]
+    hiking = freetime[1]
+    party = freetime[2]
+    city = freetime[3]
+    mountainbiking = freetime[4]
+    family = freetime[5]
+    skiing = freetime[6]
+    dogs = freetime[7]
+
+    if relationship == "single":
+        combiScore += 2
+        compactScore += 4
+        limoScore += 3
+        suvScore += 1
+    elif relationship == "couple":
+        combiScore += 2
+        compactScore += 3
+        limoScore += 4
+        suvScore += 1
+    elif relationship == "small_family":
+        combiScore += 4
+        compactScore = -100
+        limoScore += 2
+        suvScore += 3
+    elif relationship == "big_family":
+        combiScore += 4
+        compactScore = -100
+        limoScore += 2
+        suvScore += 3
+    if friends:
+        combiScore += 2
+        compactScore += 3
+        limoScore += 4
+        suvScore += 1
+    if hiking:
+        combiScore += 3
+        compactScore += 1
+        limoScore += 2
+        suvScore += 4
+    if party:
+        combiScore += 2
+        compactScore += 4
+        limoScore += 3
+        suvScore += 1
+    if city:
+        combiScore += 2
+        compactScore += 4
+        limoScore += 3
+        suvScore += 1
+    if mountainbiking:
+        combiScore += 3
+        compactScore += 1
+        limoScore += 2
+        suvScore += 4
+    if family:
+        combiScore += 4
+        compactScore += 1
+        limoScore += 2
+        suvScore += 3
+    if skiing:
+        combiScore += 3
+        compactScore += 1
+        limoScore += 2
+        suvScore += 4
+    if dogs:
+        combiScore += 3
+        compactScore += 1
+        limoScore += 2
+        suvScore += 4
+
+    combiScore += 4-int(style*0.4)
+    compactScore += int(style*0.4)
+    limoScore += int(style*0.4)
+    suvScore += 4-int(style*0.4)
+
+    if drive < 10000:
+        combiScore += 2
+        compactScore += 3
+        limoScore += 4
+        suvScore += 1
+    elif drive < 25000:
+        combiScore += 2
+        compactScore += 4
+        limoScore += 3
+        suvScore += 1
+    else:
+        combiScore += 3
+        compactScore += 1
+        limoScore += 2
+        suvScore += 4
+    result = [{'category' : 'combi', 'score': combiScore}, {'category' : 'compact', 'score': compactScore}, {'category' : 'limo', 'score': limoScore}, {'category' : 'suv', 'score': suvScore}]
+    result.sort(key=getResultScore, reverse=True)
+    print(result[0]['category'])
+    # Todo
+    return result[0]['category']
+
 
 def getInputResult(input):
-    trunkspace = 0
     relationship = input[0]
     freetime = input[1]
     mobility = input[2]
@@ -272,8 +308,6 @@ def getInputResult(input):
     budget = input[5]
     birth = input[6]
     drive = input[7]
-
-
 
     def getMinTrunkspace():
         minTrunkSpace = 0
@@ -323,8 +357,7 @@ def getInputResult(input):
     def getMinBudget():
         return budget
 
-    def getResultScore(obj):
-        return obj['score']
+
 
     minTrunkSpace = getMinTrunkspace()
     minSeats = getMinSeats()
@@ -338,12 +371,14 @@ def getInputResult(input):
     birthdate = datetime.datetime(year, month, day)
     now = datetime.datetime.now()
     age = (now - birthdate).days / 365
+    possibleCars = getCarsByCategory(getBestCategory(relationship, freetime, style, drive))
     rankings = []
 
-    for car in cars:
+    for car in possibleCars:
         score = 0
         # Checks budget
-        if minBudget < int(car['monthlyprice']) or int(car['seats']) < minSeats or (style > 5 and int(car['style']) <= 5) or (style <= 5 and int(car['style']) > 5):
+        if minBudget < int(car['monthlyprice']) or int(car['seats']) < minSeats or (
+                style > 5 and int(car['style']) <= 5) or (style <= 5 and int(car['style']) > 5):
             score = -1
             obj = {'car': car,
                    'score': score
@@ -388,7 +423,7 @@ def getInputResult(input):
 
         # Checks kind of car
         if freetime[3]:
-            if minRange > 500  and car['kindofmobility'] == 'hybridpetrolcar':
+            if minRange > 500 and car['kindofmobility'] == 'hybridpetrolcar':
                 score += 20
             elif minRange < 500 and car['kindofmobility'] == 'electriccar':
                 score += 20
@@ -399,7 +434,7 @@ def getInputResult(input):
         # ToDo: Kompaktheit
 
         # Checks style
-        score += (10 - (int(car['style']) - style))*2
+        score += (10 - (int(car['style']) - style)) * 2
 
         obj = {'car': car,
                'score': score
@@ -494,7 +529,7 @@ def getRandomTrainingData(amount):
         dataframe1 = createDataframe(inputs1, results1)
     inputs2 = []
     results2 = []
-    for i in range(amount-len(inputs1)):
+    for i in range(amount - len(inputs1)):
         while True:
             input = getRandomInputs()
             result = getInputResult(input)
@@ -507,6 +542,6 @@ def getRandomTrainingData(amount):
     dataframe = pd.concat(frames)
     return dataframe
 
-#getRandomTrainingData(500)
-#inputs, results = getInputsFromDataset("AI Dataset.csv")
-#createDataframe(inputs, results)
+# getRandomTrainingData(500)
+# inputs, results = getInputsFromDataset("AI Dataset.csv")
+# createDataframe(inputs, results)
